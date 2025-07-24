@@ -51,7 +51,22 @@ class EmailForwarder:
             html_body = self._get_body_html(original_message)
             
             # Build plain text version
-            plain_parts = [
+            plain_parts = []
+            
+            # Add transcription first if available
+            if transcription:
+                plain_parts.extend([
+                    "---------- Audio Transcription ----------",
+                    "",
+                    f"--- Transcription of {original_message.get('Subject', 'voicemail')} ---",
+                    transcription,
+                    "",
+                    "---------- End Transcription ----------",
+                    ""
+                ])
+            
+            # Then add forwarded message
+            plain_parts.extend([
                 f"---------- Forwarded message ----------",
                 f"From: {original_from}",
                 f"Date: {original_date}",
@@ -59,41 +74,48 @@ class EmailForwarder:
                 f"To: {original_message.get('To', 'Unknown')}",
                 "",
                 plain_body
-            ]
-            
-            if transcription:
-                plain_parts.extend([
-                    "",
-                    "---------- Audio Transcription ----------",
-                    transcription,
-                    "---------- End Transcription ----------"
-                ])
+            ])
             
             plain_text = "\n".join(plain_parts)
             body_part.attach(MIMEText(plain_text, 'plain'))
             
             # Build HTML version if original had HTML
             if html_body:
+                # Transcription section first if available
+                transcription_html = ""
+                if transcription:
+                    transcription_html = f"""
+                    <div style="border: 1px solid #007acc; background-color: #e6f2ff; padding: 15px; margin: 10px 0; border-radius: 5px;">
+                    <h3 style="margin-top: 0; color: #007acc;">🎙️ Audio Transcription</h3>
+                    <p style="margin: 10px 0;"><strong>Transcription of {original_message.get('Subject', 'voicemail')}:</strong></p>
+                    <div style="background-color: #fff; padding: 10px; border-radius: 3px; border: 1px solid #ddd;">
+                    <p style="white-space: pre-wrap; margin: 0;">{transcription}</p>
+                    </div>
+                    </div>
+                    """
+                
+                # Forwarded message header
                 html_header = f"""
-                <div style="border-left: 2px solid #ccc; padding-left: 10px; margin: 10px 0;">
-                <p><strong>---------- Forwarded message ----------</strong><br>
-                <strong>From:</strong> {original_from}<br>
+                <div style="margin: 20px 0;">
+                <hr style="border: none; border-top: 2px solid #ccc;">
+                <p style="color: #666; margin: 10px 0;"><strong>---------- Forwarded message ----------</strong></p>
+                <div style="background-color: #f8f8f8; padding: 10px; border-left: 3px solid #ccc;">
+                <p style="margin: 5px 0;"><strong>From:</strong> {original_from}<br>
                 <strong>Date:</strong> {original_date}<br>
                 <strong>Subject:</strong> {original_message.get('Subject', 'No Subject')}<br>
                 <strong>To:</strong> {original_message.get('To', 'Unknown')}</p>
                 </div>
+                </div>
                 """
                 
-                transcription_html = ""
-                if transcription:
-                    transcription_html = f"""
-                    <div style="border: 1px solid #ddd; background-color: #f9f9f9; padding: 10px; margin: 10px 0;">
-                    <h3>Audio Transcription</h3>
-                    <pre style="white-space: pre-wrap;">{transcription}</pre>
-                    </div>
-                    """
+                # Wrap original HTML body to preserve its formatting
+                wrapped_html_body = f"""
+                <div style="margin: 10px 0;">
+                {html_body}
+                </div>
+                """
                 
-                full_html = f"{html_header}{html_body}{transcription_html}"
+                full_html = f"{transcription_html}{html_header}{wrapped_html_body}"
                 body_part.attach(MIMEText(full_html, 'html'))
             
             # If we used a separate body part, attach it to the main message
