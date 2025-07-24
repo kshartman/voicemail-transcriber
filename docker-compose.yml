@@ -1,0 +1,27 @@
+
+services:
+  voicemail-transcriber:
+    build: .
+    image: voicemail-transcriber:latest
+    container_name: voicemail-transcriber
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    env_file:
+      - .env
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - voicemail-net
+
+networks:
+  voicemail-net:
+    driver: bridge

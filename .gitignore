@@ -1,0 +1,21 @@
+.env
+*.pyc
+__pycache__/
+logs/
+*.log
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+# Emacs
+\#*\#
+.\#*
+*.elc
+auto-save-list
+tramp
+*_flymake.*
+.dir-locals.el
+.projectile
+.tern-project
