@@ -1,0 +1,7 @@
+# Exclude sensitive files from archive exports (like GitHub releases)
+.env.gpg export-ignore
+.env export-ignore
+.env.* export-ignore
+
+# Mark as binary to prevent diff exposure
+*.gpg binary
