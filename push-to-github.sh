@@ -11,8 +11,14 @@ EXCLUDE_FILES=".env.gpg test-defaults.env push-to-github.sh"
 # Save current branch
 CURRENT_BRANCH=$(git branch --show-current)
 
-# Ensure we're on main branch
-git checkout main
+# Create a temporary directory and move sensitive files there
+TEMP_DIR=$(mktemp -d)
+echo "📦 Moving sensitive files to temp directory..."
+for file in $EXCLUDE_FILES; do
+    if [ -f "$file" ]; then
+        cp "$file" "$TEMP_DIR/" 2>/dev/null || true
+    fi
+done
 
 # Create or switch to github branch
 git checkout -B github
@@ -20,12 +26,13 @@ git checkout -B github
 # Reset github branch to match main
 git reset --hard main
 
-# Remove excluded files from the index
+# Remove excluded files from the working directory and index
 for file in $EXCLUDE_FILES; do
-    if git ls-files --error-unmatch "$file" 2>/dev/null; then
+    if [ -f "$file" ]; then
         echo "🚫 Removing $file from github branch"
-        git rm --cached "$file" 2>/dev/null || true
+        rm -f "$file"
     fi
+    git rm --cached "$file" 2>/dev/null || true
 done
 
 # Commit the removal if there are changes
@@ -39,6 +46,17 @@ git push -f upstream github:main
 
 # Return to original branch
 git checkout "$CURRENT_BRANCH"
+
+# Restore sensitive files from temp directory
+echo "📥 Restoring sensitive files..."
+for file in $EXCLUDE_FILES; do
+    if [ -f "$TEMP_DIR/$file" ]; then
+        cp "$TEMP_DIR/$file" . 2>/dev/null || true
+    fi
+done
+
+# Clean up temp directory
+rm -rf "$TEMP_DIR"
 
 echo "✅ Successfully pushed to GitHub (without sensitive files)"
 echo "📍 You are back on branch: $CURRENT_BRANCH"
