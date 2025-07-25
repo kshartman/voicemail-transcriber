@@ -13,6 +13,13 @@ This is a voicemail transcription service that monitors IMAP mailboxes for voice
 - Can add phone numbers to email subjects for easy identification
 - Each mailbox can have its own destination email address
 
+## Recent Updates
+
+### Security Updates (July 25, 2025)
+- Upgraded PyTorch from 2.1.2 to 2.2.0+ (fixes CVE-2024-31580 heap buffer overflow)
+- Upgraded Transformers from 4.37.2 to 4.46.3+ (fixes CVE-2024-11392/11393/11394 RCE vulnerabilities)
+- All functionality tested and verified working with updated dependencies
+
 ## Key Commands
 
 ### Development Commands

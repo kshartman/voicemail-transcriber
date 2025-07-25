@@ -144,6 +144,12 @@ Check if GPU is detected:
 docker-compose exec voicemail-transcriber nvidia-smi
 ```
 
+## Security
+
+This project maintains security-hardened dependencies:
+- PyTorch 2.2.0+ (patched for CVE-2024-31580)
+- Transformers 4.46.3+ (patched for CVE-2024-11392/11393/11394)
+
 ## Notes
 
 - The service forwards ALL emails (not just those with audio attachments)
