@@ -150,6 +150,12 @@ This project maintains security-hardened dependencies:
 - PyTorch 2.2.0+ (patched for CVE-2024-31580)
 - Transformers 4.46.3+ (patched for CVE-2024-11392/11393/11394)
 
+### Note on Base Image Vulnerabilities
+
+This project uses NVIDIA CUDA 12.2.2 base images to maintain compatibility with older NVIDIA graphics cards and their drivers. Many users (including ourselves) run this on older but capable GPUs like the GTX 1660 Super, which require driver versions that don't support the latest CUDA releases.
+
+While newer CUDA base images (12.6+) would reduce the number of reported vulnerabilities, they would break compatibility with these widely-used cards. We've made the conscious decision to prioritize hardware compatibility over achieving a zero-vulnerability scan, as the service typically runs in controlled environments processing voicemail audio files.
+
 ## Notes
 
 - The service forwards ALL emails (not just those with audio attachments)
