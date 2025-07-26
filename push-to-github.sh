@@ -3,7 +3,14 @@
 
 set -e  # Exit on error
 
-echo "🔄 Syncing to GitHub branch..."
+echo "🔄 Syncing to GitHub..."
+
+# Check if 'upstream' remote exists (GitHub)
+if ! git remote get-url upstream >/dev/null 2>&1; then
+    echo "❌ Error: 'upstream' remote not configured"
+    echo "Please add GitHub remote with: git remote add upstream git@github.com:YOUR_USERNAME/voicemail-transcriber.git"
+    exit 1
+fi
 
 # Files to exclude from GitHub
 EXCLUDE_FILES=".env.gpg test-defaults.env push-to-github.sh"
@@ -21,15 +28,15 @@ for file in $EXCLUDE_FILES; do
 done
 
 # Create or switch to github branch
-git checkout -B github
+git checkout -B github-temp
 
-# Reset github branch to match main
-git reset --hard main
+# Reset github-temp branch to match current branch
+git reset --hard "$CURRENT_BRANCH"
 
 # Remove excluded files from the working directory and index
 for file in $EXCLUDE_FILES; do
     if [ -f "$file" ]; then
-        echo "🚫 Removing $file from github branch"
+        echo "🚫 Removing $file from GitHub push"
         rm -f "$file"
     fi
     git rm --cached "$file" 2>/dev/null || true
@@ -40,9 +47,9 @@ if ! git diff --cached --quiet; then
     git commit -m "Remove sensitive files for GitHub"
 fi
 
-# Push to GitHub
-echo "📤 Pushing to GitHub..."
-git push -f upstream github:main
+# Push to GitHub (upstream remote)
+echo "📤 Pushing to GitHub (upstream)..."
+git push -f upstream github-temp:main
 
 # Return to original branch
 git checkout "$CURRENT_BRANCH"
