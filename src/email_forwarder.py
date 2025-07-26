@@ -63,10 +63,10 @@ class EmailForwarder:
             # Add phone number to subject if provided
             original_subject = original_message.get('Subject', 'No Subject')
             if phone_number:
-                logger.info(f"Adding phone number {phone_number} to subject")
+                logger.debug(f"Adding phone number {phone_number} to subject")
                 msg['Subject'] = f"[{phone_number}] Fwd: {original_subject}"
             else:
-                logger.info("No phone number provided for subject")
+                logger.debug("No phone number provided for subject")
                 msg['Subject'] = f"Fwd: {original_subject}"
             
             # Add headers to prevent spam filtering
@@ -182,7 +182,7 @@ class EmailForwarder:
                     attachment.add_header('Content-Disposition', f'attachment; filename= {filename}')
                     msg.attach(attachment)
             
-            logger.info(f"Connecting to SMTP server {self.smtp_host}:{self.smtp_port}")
+            logger.debug(f"Connecting to SMTP server {self.smtp_host}:{self.smtp_port}")
             
             # Test connection first
             try:
@@ -190,7 +190,7 @@ class EmailForwarder:
                 test_socket.settimeout(5)
                 result = test_socket.connect_ex((self.smtp_host, self.smtp_port))
                 test_socket.close()
-                logger.info(f"Socket test to {self.smtp_host}:{self.smtp_port} result: {result}")
+                logger.debug(f"Socket test to {self.smtp_host}:{self.smtp_port} result: {result}")
             except Exception as sock_e:
                 logger.error(f"Socket test failed: {sock_e}")
             
@@ -252,31 +252,31 @@ class EmailForwarder:
         """Send email with retry logic"""
         # Choose the appropriate SMTP class based on connection security
         if self.connection_security == 'SSL':
-            logger.info(f"Connecting to SMTP server using SSL on {self.smtp_host}:{self.smtp_port}")
+            logger.debug(f"Connecting to SMTP server using SSL on {self.smtp_host}:{self.smtp_port}")
             smtp_class = smtplib.SMTP_SSL
             server = smtp_class(self.smtp_host, self.smtp_port, timeout=30)
         else:
-            logger.info(f"Connecting to SMTP server on {self.smtp_host}:{self.smtp_port}")
+            logger.debug(f"Connecting to SMTP server on {self.smtp_host}:{self.smtp_port}")
             server = smtplib.SMTP(self.smtp_host, self.smtp_port, timeout=30)
         
         try:
-            logger.info("SMTP connection established")
+            logger.debug("SMTP connection established")
             
             # Apply STARTTLS if requested
             if self.connection_security == 'STARTTLS':
-                logger.info("Starting TLS")
+                logger.debug("Starting TLS")
                 server.starttls()
             
             # Authenticate if credentials provided
             if self.username and self.password:
-                logger.info(f"Logging in as {ConfigValidator.mask_email(self.username)}")
+                logger.debug(f"Logging in as {ConfigValidator.mask_email(self.username)}")
                 server.login(self.username, self.password)
-                logger.info("Login successful")
+                logger.debug("Login successful")
             else:
-                logger.info("No authentication credentials provided, sending without auth")
+                logger.debug("No authentication credentials provided, sending without auth")
             
             # Send the message
-            logger.info("Sending message")
+            logger.debug("Sending message")
             server.send_message(msg)
             logger.info(f"Email forwarded successfully to {ConfigValidator.mask_email(forward_to)}")
             
@@ -301,7 +301,7 @@ class EmailForwarder:
                 if self.username and self.password:
                     server.login(self.username, self.password)
                 
-                logger.info("SMTP connection test successful")
+                logger.debug("SMTP connection test successful")
                 return True
             finally:
                 server.quit()

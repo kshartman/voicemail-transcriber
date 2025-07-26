@@ -103,6 +103,19 @@ def process_emails():
     
     metrics = MetricsCollector()
     
+    # Track per-account statistics
+    account_stats = {}
+    for account in config['accounts']:
+        account_stats[account['name']] = {
+            'messages_checked': 0,
+            'messages_processed': 0,
+            'messages_with_audio': 0,
+            'last_activity': None
+        }
+    
+    # Track last statistics log time
+    last_stats_log = datetime.now()
+    
     # Validate connections before starting
     validate_connections(config)
     
@@ -137,7 +150,7 @@ def process_emails():
                 break
                 
             try:
-                logger.info(f"Processing account: {account['name']}")
+                logger.debug(f"Processing account: {account['name']}")
                 
                 # Create IMAP client for this account
                 imap_client = IMAPEmailClient(
@@ -167,12 +180,15 @@ def process_emails():
                 
                 # Get ALL messages from INBOX
                 all_messages = imap_client.get_all_messages()
-                logger.info(f"Found {len(all_messages)} messages in {account['name']} INBOX")
+                logger.debug(f"Found {len(all_messages)} messages in {account['name']} INBOX")
+                
+                # Update statistics
+                account_stats[account['name']]['messages_checked'] += len(all_messages)
                 
                 forward_to = account['forward_to']
                 phone_number = account.get('phone', None)
                 masked_forward_to = ConfigValidator.mask_email(forward_to)
-                logger.info(f"Account {account['name']}: forward_to={masked_forward_to}, phone={phone_number}")
+                logger.debug(f"Account {account['name']}: forward_to={masked_forward_to}, phone={phone_number}")
                 
                 for msg_id in all_messages:
                     try:
@@ -192,7 +208,8 @@ def process_emails():
                         
                         transcription = ""
                         if audio_attachments:
-                            logger.info(f"Processing {len(audio_attachments)} audio attachments")
+                            logger.debug(f"Processing {len(audio_attachments)} audio attachments")
+                            account_stats[account['name']]['messages_with_audio'] += 1
                             for filename, audio_data in audio_attachments:
                                 try:
                                     metrics.start_transcription()
@@ -216,6 +233,10 @@ def process_emails():
                         # Move the message to archive folder instead of just marking as read
                         imap_client.move_message(msg_id, archive_folder)
                         logger.info(f"Message {msg_id} processed, forwarded, and moved to {archive_folder}")
+                        
+                        # Update statistics
+                        account_stats[account['name']]['messages_processed'] += 1
+                        account_stats[account['name']]['last_activity'] = datetime.now()
                         
                         # Mark successful processing
                         health_check.mark_healthy()
@@ -248,8 +269,33 @@ def process_emails():
         if datetime.now() - last_cleanup > timedelta(days=1):
             last_cleanup = datetime.now()
         
-        # Log metrics periodically
-        metrics.log_periodic_summary(interval_minutes=60)
+        # Log hourly statistics
+        if datetime.now() - last_stats_log > timedelta(hours=1):
+            logger.info("=== Hourly Statistics ===")
+            total_checked = 0
+            total_processed = 0
+            total_with_audio = 0
+            
+            for account_name, stats in account_stats.items():
+                if stats['messages_checked'] > 0 or stats['messages_processed'] > 0:
+                    logger.info(f"{account_name}: checked={stats['messages_checked']}, "
+                              f"processed={stats['messages_processed']}, "
+                              f"with_audio={stats['messages_with_audio']}")
+                    total_checked += stats['messages_checked']
+                    total_processed += stats['messages_processed']
+                    total_with_audio += stats['messages_with_audio']
+                    
+                    # Reset hourly stats
+                    stats['messages_checked'] = 0
+                    stats['messages_processed'] = 0
+                    stats['messages_with_audio'] = 0
+            
+            logger.info(f"Total: checked={total_checked}, processed={total_processed}, "
+                      f"with_audio={total_with_audio}")
+            
+            # Also log metrics summary
+            metrics.metrics.log_summary()
+            last_stats_log = datetime.now()
         
         if not shutdown_requested:
             logger.debug(f"Sleeping for {config['poll_interval']} seconds...")
