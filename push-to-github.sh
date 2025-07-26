@@ -54,6 +54,9 @@ git push -f upstream github-temp:main
 # Return to original branch
 git checkout "$CURRENT_BRANCH"
 
+# Delete the temporary branch
+git branch -D github-temp 2>/dev/null || true
+
 # Restore sensitive files from temp directory
 echo "📥 Restoring sensitive files..."
 for file in $EXCLUDE_FILES; do
@@ -65,5 +68,10 @@ done
 # Clean up temp directory
 rm -rf "$TEMP_DIR"
 
+# Tell git to ignore upstream's main branch for tracking
+git config branch.main.remote origin
+git config branch.main.merge refs/heads/main
+
 echo "✅ Successfully pushed to GitHub (without sensitive files)"
 echo "📍 You are back on branch: $CURRENT_BRANCH"
+echo "🔧 Configured to track origin (private repo) instead of upstream"
