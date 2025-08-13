@@ -3,15 +3,16 @@ services:
     build: .
     image: voicemail-transcriber:latest
     container_name: voicemail-transcriber
-    gpus: all            # <-- actually gives the container the GPU
+    gpus: all
     env_file:
       - .env
     restart: unless-stopped
     volumes:
       - ./logs:/app/logs
+      - /srv/whisper-cache:/home/whisper/.cache/whisper   # ← add this line
     networks:
       - voicemail-net
 
 networks:
   voicemail-net:
-    driver: bridge       # <-- fix typo
+    driver: bridge
