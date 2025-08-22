@@ -4,14 +4,36 @@ services:
     image: voicemail-transcriber:latest
     container_name: voicemail-transcriber
     gpus: all
+
+    command: ["/app/run.sh"]
+
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import os; exit(0 if os.path.exists('/tmp/voicemail_transcriber.healthy') else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+    environment:
+      - PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
     env_file:
       - .env
     restart: unless-stopped
+
     volumes:
       - ./logs:/app/logs
-      - /srv/whisper-cache:/home/whisper/.cache/whisper   # ← add this line
+      - /srv/whisper-cache:/home/whisper/.cache/whisper
+      - /srv/audio-in:/data/in
+      - /srv/audio-out:/data/out
+
     networks:
       - voicemail-net
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
 
 networks:
   voicemail-net:
