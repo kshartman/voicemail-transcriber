@@ -1,0 +1,81 @@
+# Dependabot configuration for automated dependency updates
+# This monitors for minor and patch updates within major version constraints
+
+version: 2
+updates:
+  # Python dependencies via pip
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/Chicago"
+    # Only allow updates for security fixes and minor/patch versions
+    allow:
+      - dependency-type: "all"
+    versioning-strategy: "increase-if-necessary"
+    # Ignore major version updates for critical packages
+    ignore:
+      # Keep torch at 2.2.x for CUDA compatibility
+      - dependency-name: "torch"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "torchaudio"
+        update-types: ["version-update:semver-major"]
+      # Keep numpy at 1.x for compatibility
+      - dependency-name: "numpy"
+        update-types: ["version-update:semver-major"]
+      # Keep specific versions that are pinned for a reason
+      - dependency-name: "openai-whisper"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+    # Group minor and patch updates together
+    groups:
+      python-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    # Open PRs for security updates immediately
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "python"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    
+  # Docker base image updates
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/Chicago"
+    # Only allow minor and patch updates for CUDA images
+    allow:
+      - dependency-name: "nvidia/cuda"
+        # Stay within 12.2.x for driver compatibility
+        versions: ["12.2.*"]
+    labels:
+      - "dependencies"
+      - "docker"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    
+  # GitHub Actions (if any are added in the future)
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/Chicago"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
