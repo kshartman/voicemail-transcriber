@@ -3,6 +3,8 @@ import time
 import logging
 import signal
 import sys
+import socket
+import platform
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from imap_client import IMAPEmailClient
@@ -11,6 +13,8 @@ from whisper_transcriber import WhisperTranscriber
 from config_validator import ConfigValidator
 from health_check import HealthCheck
 from metrics import MetricsCollector
+from email.message import EmailMessage
+import smtplib
 
 logging.basicConfig(
     level=logging.INFO,
@@ -81,6 +85,93 @@ def validate_connections(config):
                 sys.exit(1)
 
 
+def send_startup_notification(config, device_info):
+    """Send email notification when container starts/restarts"""
+    try:
+        # Get first account's forward_to for notification
+        if not config['accounts']:
+            logger.warning("No accounts configured for startup notification")
+            return
+        
+        recipient = config['accounts'][0]['forward_to']
+        # Get SMTP config from first account or global config
+        account = config['accounts'][0]
+        smtp_host = account.get('smtp_host', os.getenv('SMTP_HOST'))
+        smtp_port = int(account.get('smtp_port', os.getenv('SMTP_PORT', 587)))
+        smtp_user = account.get('smtp_username', os.getenv('SMTP_USERNAME'))
+        smtp_pass = account.get('smtp_password', os.getenv('SMTP_PASSWORD'))
+        smtp_security = account.get('smtp_security', os.getenv('SMTP_SECURITY', 'STARTTLS'))
+        
+        # Create notification email with proper headers to avoid spam filters
+        msg = EmailMessage()
+        msg['Subject'] = f'📧 Voicemail Transcriber Started - {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}'
+        msg['From'] = smtp_user if smtp_user else 'voicemail@localhost'
+        msg['To'] = recipient
+        
+        # Add proper email headers to avoid spam classification
+        import email.utils
+        msg['Date'] = email.utils.formatdate(localtime=True)
+        msg['Message-ID'] = email.utils.make_msgid(domain=smtp_host if smtp_host else 'localhost')
+        msg['X-Mailer'] = 'Voicemail Transcriber 1.0'
+        msg['MIME-Version'] = '1.0'
+        
+        hostname = socket.gethostname()
+        
+        content = f"""The Voicemail Transcriber service has started successfully.
+
+Service Information:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📅 Started: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+🖥️  Hostname: {hostname}
+🐧 System: {platform.system()} {platform.release()}
+📬 SMTP Server: {smtp_host}:{smtp_port} ({smtp_security})
+✉️  Monitored Accounts: {len(config['accounts'])}
+🎙️  Whisper Model: {config['whisper_model']}
+🗣️  Language: {config['whisper_language']}
+💾 {device_info}
+
+Monitored Accounts:
+"""
+        for account in config['accounts']:
+            masked_email = ConfigValidator.mask_email(account['imap_username'])
+            content += f"  • {account['name']}: {masked_email} → {ConfigValidator.mask_email(account['forward_to'])}"
+            if account.get('phone'):
+                content += f" [{account['phone']}]"
+            content += "\n"
+        
+        content += f"""
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+This notification confirms that:
+✅ Container started successfully
+✅ SMTP on port {smtp_port} is working
+✅ All services are initialized
+"""
+        
+        msg.set_content(content)
+        
+        # Send the notification
+        if smtp_security == 'SSL':
+            server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=30)
+        else:
+            server = smtplib.SMTP(smtp_host, smtp_port, timeout=30)
+        
+        try:
+            if smtp_security == 'STARTTLS':
+                server.starttls()
+            
+            if smtp_user and smtp_pass:
+                server.login(smtp_user, smtp_pass)
+            
+            server.send_message(msg)
+            logger.info(f"Startup notification sent to {ConfigValidator.mask_email(recipient)}")
+        finally:
+            server.quit()
+            
+    except Exception as e:
+        logger.error(f"Failed to send startup notification: {e}")
+        # Don't fail the startup if notification fails
+
+
 def clean_old_messages(imap_client, archive_folder, retention_days):
     """Delete messages older than retention period from archive folder"""
     try:
@@ -136,6 +227,9 @@ def process_emails():
     logger.info(f"Max attachment size: {config['max_attachment_size_mb']}MB")
     logger.info(f"Max attachments per email: {config['max_attachments_per_email']}")
     logger.info(f"Retention policy: {config['retention_days']} days")
+    
+    # Send startup notification email (also tests SMTP on port 587)
+    send_startup_notification(config, whisper.get_device_info())
     
     archive_folder = config['archive_folder']
     last_cleanup = datetime.now()
