@@ -20,6 +20,8 @@ This service works perfectly with voicemail-to-email services like:
 - Adds phone numbers to email subjects for easy identification
 - Supports SSL/TLS and STARTTLS for both IMAP and SMTP
 - Optional SMTP authentication (works with open relays)
+- Sends startup notification email when container restarts
+- Hourly statistics logging for monitoring activity
 
 ## Prerequisites
 

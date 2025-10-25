@@ -15,6 +15,21 @@ This is a voicemail transcription service that monitors IMAP mailboxes for voice
 
 ## Recent Updates
 
+### Startup Notification Feature (October 25, 2025)
+- Added automatic startup notification email when container restarts
+- Sends comprehensive service status including monitored accounts and configuration
+- Includes proper email headers (Date, Message-ID) to avoid spam classification
+- Also serves as automatic SMTP port 587 connectivity test on every restart
+
+### SMTP Configuration Update (October 25, 2025)
+- Changed SMTP port from 25 to 587 for proper authenticated email submission
+- Port 587 is the standard submission port for authenticated SMTP
+
+### Logging Improvements (October 25, 2025)
+- Reduced routine polling logs to DEBUG level for cleaner output
+- Added hourly statistics showing per-account activity
+- Keep important events at INFO level (startup, errors, successful processing)
+
 ### Security Updates (July 25, 2025)
 - Upgraded PyTorch from 2.1.2 to 2.2.0+ (fixes CVE-2024-31580 heap buffer overflow)
 - Upgraded Transformers from 4.37.2 to 4.46.3+ (fixes CVE-2024-11392/11393/11394 RCE vulnerabilities)
